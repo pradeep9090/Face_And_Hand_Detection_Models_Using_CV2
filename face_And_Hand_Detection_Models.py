@@ -15,6 +15,9 @@ while True:
     if not ret:
         break
     
+    # Flip the frame horizontally to correct the mirrored view
+    frame = cv2.flip(frame, 1)
+    
     # Convert the frame to grayscale for face detection
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
@@ -26,16 +29,8 @@ while True:
         # Draw rectangle
         cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
         
-        # Calculate the position for the text (bottom-right of the rectangle)
-        text_position = (x + w - 30, y + h + 30)
-        # Ensure text does not go outside the frame
-        if text_position[1] + 30 > frame.shape[0]:
-            text_position = (text_position[0], frame.shape[0] - 10)
-        if text_position[0] + 100 > frame.shape[1]:
-            text_position = (frame.shape[1] - 100, text_position[1])
-        
-        # Add text below the rectangle
-        cv2.putText(frame, 'Face', text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+        # Add text 'Face'
+        cv2.putText(frame, 'Face', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
     
     # Convert the frame to RGB for hand detection
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -45,12 +40,29 @@ while True:
     
     # Draw hand landmarks and connections
     if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
+        for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+            # Get the handedness (right or left hand)
+            hand_label = results.multi_handedness[idx].classification[0].label
+            
+            # Correct handedness label if necessary
+            if hand_label == 'Left':
+                hand_label = 'Left'
+            elif hand_label == 'Right':
+                hand_label = 'Right'
+            else:
+                hand_label = 'Unknown'
+
             for landmark in hand_landmarks.landmark:
                 h, w, c = frame.shape
                 cx, cy = int(landmark.x * w), int(landmark.y * h)
                 cv2.circle(frame, (cx, cy), 5, (0, 255, 0), -1)
+            
+            # Draw landmarks and connections on the hand
             mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            
+            # Add label to indicate right or left hand
+            hand_position = (int(hand_landmarks.landmark[0].x * w), int(hand_landmarks.landmark[0].y * h) - 20)
+            cv2.putText(frame, hand_label, hand_position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     
     cv2.imshow("Face and Hand Detection", frame)
     
